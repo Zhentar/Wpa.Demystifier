@@ -1,0 +1,60 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net452</TargetFramework>
+    <AutoGenerateBindingRedirects>True</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Costura.Fody" Version="3.1.6" />
+    <PackageReference Include="Fody" Version="3.2.16">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="System.Buffers" Version="4.5.0" />
+    <PackageReference Include="System.Memory" Version="4.5.1" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.5.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.Performance.Base">
+      <HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\Microsoft.Performance.Base.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Performance.Core4.Interop">
+      <HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\microsoft.performance.core4.interop.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Performance.DataEngine">
+      <HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\Microsoft.Performance.DataEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Performance.Shell">
+      <HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\microsoft.performance.shell.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Performance.Shell.AddIns">
+      <HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\Microsoft.Performance.Shell.AddIns.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Performance.Shell.Data">
+      <HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\microsoft.performance.shell.data.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="PresentationFramework">
+      <HintPath>..\..\..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.5\PresentationFramework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
