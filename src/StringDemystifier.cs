@@ -38,7 +38,7 @@ namespace Wpa.Demystifier
 			if (!moduleName.HasValue) { moduleName = symbol.SymbolImageData.OriginalFileName; }
 
 			var moduleSpan = moduleName.AsSpan();
-			if (isJittedSymbol && (moduleSpan.EndsWith(".dll".AsSpan()) || moduleSpan.EndsWith(".exe".AsSpan())))
+			if (isJittedSymbol && (moduleSpan.EndsWith(".dll".AsSpan(), StringComparison.OrdinalIgnoreCase) || moduleSpan.EndsWith(".exe".AsSpan(), StringComparison.OrdinalIgnoreCase)))
 			{
 				moduleSpan = moduleSpan.Slice(0, moduleSpan.Length - 4);
 			}
