@@ -57,4 +57,8 @@
     </Reference>
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="copy /Y &quot;$(TargetPath)&quot; &quot;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit" />
+  </Target>
+
 </Project>

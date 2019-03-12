@@ -102,5 +102,18 @@ namespace Wpa.Demystifier
 			return @this.Slice(0, delimIdx);
 		}
 
+		public static ReadOnlySpan<T> SplitLast<T>(this ReadOnlySpan<T> @this, T delimiter, out ReadOnlySpan<T> tail) where T : IEquatable<T>
+		{
+			int delimIdx = @this.LastIndexOf(delimiter);
+			if (delimIdx < 0)
+			{
+				tail = ReadOnlySpan<T>.Empty;
+				return @this;
+			}
+
+			tail = @this.Slice(delimIdx + 1);
+			return @this.Slice(0, delimIdx);
+		}
+
 	}
 }

@@ -56,7 +56,7 @@ namespace Wpa.Demystifier
 			}
 
 			[StructLayout(LayoutKind.Sequential)]
-			private struct FakeDecodedSymbol
+			private readonly struct FakeDecodedSymbol
 			{
 				public readonly SymbolData symbolData;
 				public readonly uint symbolLoadFailure;

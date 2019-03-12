@@ -38,6 +38,13 @@ namespace Wpa.Demystifier
 			if (!moduleName.HasValue) { moduleName = symbol.SymbolImageData.OriginalFileName; }
 
 			var moduleSpan = moduleName.AsSpan();
+
+			if(!isJittedSymbol && moduleSpan.EndsWith(".ni.dll".AsSpan(), StringComparison.Ordinal))
+			{
+				isJittedSymbol = true;
+				moduleSpan = moduleSpan.Slice(0, moduleSpan.Length - 7);
+			}
+
 			if (isJittedSymbol && (moduleSpan.EndsWith(".dll".AsSpan(), StringComparison.OrdinalIgnoreCase) || moduleSpan.EndsWith(".exe".AsSpan(), StringComparison.OrdinalIgnoreCase)))
 			{
 				moduleSpan = moduleSpan.Slice(0, moduleSpan.Length - 4);
@@ -58,25 +65,25 @@ namespace Wpa.Demystifier
 			var functionName = symbol.SymbolName.AsSpan();
 			if (functionName.IsEmpty)
 			{
-				sb.Append('?');
+				sb.Append(symbol.BaseAddress.ToBytes.ToString("X"));
 			}
 			else
 			{
 				if (isJittedSymbol)
 				{
-					if (functionName.StartsWith(moduleSpan))
+					if (functionName.StartsWith(moduleSpan, StringComparison.Ordinal))
 					{
 						functionName = functionName.Slice(moduleSpan.Length);
 						functionName = functionName.TrimStart('.');
 					}
-					if (functionName.EndsWith(" 0x0".AsSpan()))
+					if (functionName.EndsWith(" 0x0".AsSpan(), StringComparison.Ordinal))
 					{
 						functionName = functionName.Slice(0, functionName.Length - 4);
 					}
 					ProcessString(functionName, sb);
 				}
 				else
-				{	//TODO: ngen image cleanup
+				{	
 					sb.Append(functionName);
 				}
 			}
@@ -88,43 +95,21 @@ namespace Wpa.Demystifier
 			var classPiece = input.SplitOnce("::".AsSpan(), out var methodPiece);
 			if (!methodPiece.IsEmpty)
 			{
-				classPiece = classPiece.SplitOnce('[', out var typeParamList);
-				typeParamList = typeParamList.TrimEnd(']');
-				//var actualClassName = classPiece.SplitOnce("+<".AsSpan(), out var genClassName);
-
-				var trailingJunk = ReadOnlySpan<char>.Empty;
-
-				if (methodPiece.StartsWith("<".AsSpan()))
+				BuildClassAndMethodName(sb, classPiece, methodPiece, default);
+			}
+			else if (input[input.Length - 1] == ')')
+			{
+				//we've got an ngen image name! Which unfortunately means the method doesn't have a distinct delimiter
+				var typeAndMethod = input.SplitOnce('(', out _); //TODO: clean up params instead of throwing them out
+				var methodTypeParams = ReadOnlySpan<char>.Empty;
+				if (typeAndMethod[typeAndMethod.Length - 1] == ']')
 				{
-					methodPiece = methodPiece.Slice(1);
-					methodPiece = methodPiece.SplitOnce('>', out trailingJunk);
+					typeAndMethod = typeAndMethod.SplitLast('[', out methodTypeParams);
+					methodTypeParams = methodTypeParams.TrimEnd(']');
 				}
 
-
-				RecursiveParseClassName(sb, classPiece, ref typeParamList, methodPiece);
-
-				if (trailingJunk.StartsWith(LambdaMethodOrdinalPrefix.AsSpan()))
-				{
-					trailingJunk = trailingJunk.Slice(LambdaMethodOrdinalPrefix.Length);
-					int ordinal = trailingJunk[0] - '0';
-					if (trailingJunk.Length > 1)
-					{
-						int.TryParse(new string(trailingJunk.ToArray()), out ordinal);
-					}
-
-					if (ordinal > 0)
-					{
-						sb.Append(" [" + ordinal + "]");
-					}
-				}
-				else if (trailingJunk.StartsWith(LocalFunctionPrefix.AsSpan()))
-				{
-					AppendLocalFunctionName(sb, trailingJunk);
-				}
-				else
-				{
-					sb.Append(trailingJunk);
-				}
+				classPiece = typeAndMethod.SplitLast('.', out methodPiece);
+				BuildClassAndMethodName(sb, classPiece, methodPiece, methodTypeParams);
 			}
 			else
 			{
@@ -132,7 +117,46 @@ namespace Wpa.Demystifier
 			}
 		}
 
-		private static void RecursiveParseClassName(StringBuilder sb, ReadOnlySpan<char> remainingTypeName, ref ReadOnlySpan<char> typeParamList, ReadOnlySpan<char> methodPiece)
+		private static void BuildClassAndMethodName(StringBuilder sb, ReadOnlySpan<char> classPiece, ReadOnlySpan<char> methodPiece, ReadOnlySpan<char> methodTypeParams)
+		{
+			var trailingJunk = ReadOnlySpan<char>.Empty;
+
+			if (methodPiece.StartsWith("<".AsSpan()))
+			{
+				methodPiece = methodPiece.Slice(1);
+				methodPiece = methodPiece.SplitOnce('>', out trailingJunk);
+			}
+
+			classPiece = classPiece.SplitOnce('[', out var typeParamList);
+			typeParamList = typeParamList.TrimEnd(']');
+
+			RecursiveParseClassName(sb, ref classPiece, ref typeParamList, methodPiece, ref methodTypeParams);
+
+			if (trailingJunk.StartsWith(LambdaMethodOrdinalPrefix.AsSpan()))
+			{
+				trailingJunk = trailingJunk.Slice(LambdaMethodOrdinalPrefix.Length);
+				int ordinal = trailingJunk[0] - '0';
+				if (trailingJunk.Length > 1)
+				{
+					int.TryParse(new string(trailingJunk.ToArray()), out ordinal);
+				}
+
+				if (ordinal > 0)
+				{
+					sb.Append(" [" + ordinal + "]");
+				}
+			}
+			else if (trailingJunk.StartsWith(LocalFunctionPrefix.AsSpan()))
+			{
+				AppendLocalFunctionName(sb, trailingJunk);
+			}
+			else
+			{
+				sb.Append(trailingJunk);
+			}
+		}
+
+		private static void RecursiveParseClassName(StringBuilder sb, ref ReadOnlySpan<char> remainingTypeName, ref ReadOnlySpan<char> typeParamList,in ReadOnlySpan<char> methodPiece, ref ReadOnlySpan<char> methodTypeParams)
 		{
 			var classNameAndTypeParamCount = remainingTypeName.SplitOnce('+', out remainingTypeName);
 			var className = classNameAndTypeParamCount.SplitOnce('`', out var thisClassTypeParamCount);
@@ -178,12 +202,24 @@ namespace Wpa.Demystifier
 			if (!remainingTypeName.IsEmpty)
 			{
 				sb.Append('+');
-				RecursiveParseClassName(sb, remainingTypeName, ref typeParamList, methodPiece);
+				RecursiveParseClassName(sb, ref remainingTypeName, ref typeParamList, methodPiece, ref methodTypeParams);
 			}
 			else
 			{
 				sb.Append("::");
 				sb.Append(methodPiece);
+				if (!methodTypeParams.IsEmpty)
+				{
+					int tCount = 0;
+					sb.Append('<');
+					sb.Append(PopTypeParam(ref methodTypeParams, ref tCount));
+					while(!methodTypeParams.IsEmpty)
+					{
+						sb.Append(',');
+						sb.Append(PopTypeParam(ref methodTypeParams, ref tCount));
+					}
+					sb.Append('>');
+				}
 			}
 
 			if (isLambdaClosure)
@@ -235,17 +271,13 @@ namespace Wpa.Demystifier
 			var nextType = typeParamList.SplitOnce(',', out typeParamList);
 			if (nextType.SequenceEqual(System__Canon.AsSpan()))
 			{
-				TCount++;
-				if (TCount > 1)
-				{
-					return ("T" + TCount).AsSpan();
-				}
-
-				return "T".AsSpan();
+				return Tees[TCount++].AsSpan();
 			}
 			//The full namespace tends to be a rather bit excessive... chop it off.
 			return nextType.Slice(nextType.LastIndexOf('.') + 1);
 		}
+
+		private static readonly string[] Tees = { "T", "T2","T3","T4","T5","T6","T7","T8","T9", "T10"};
 
 		private const string System__Canon = "System.__Canon";
 		private static readonly string LambdaMethodOrdinalPrefix = (char)GeneratedNameKind.LambdaMethod + "__";
